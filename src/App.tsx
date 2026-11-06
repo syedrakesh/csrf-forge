@@ -1,4 +1,5 @@
 import { Routes, Route } from 'react-router-dom';
+import { AppProvider } from './context/AppContext';
 import { Layout } from './components/layout/Layout';
 import { Dashboard } from './pages/Dashboard';
 import { ParserPage } from './pages/ParserPage';
@@ -11,18 +12,20 @@ import { NotFound } from './pages/NotFound';
 
 function App() {
   return (
-    <Routes>
-      <Route path="/" element={<Layout />}>
-        <Route index element={<Dashboard />} />
-        <Route path="parser" element={<ParserPage />} />
-        <Route path="analyzer" element={<AnalyzerPage />} />
-        <Route path="generator" element={<GeneratorPage />} />
-        <Route path="playground" element={<PlaygroundPage />} />
-        <Route path="projects" element={<ProjectsPage />} />
-        <Route path="reports" element={<ReportsPage />} />
-        <Route path="*" element={<NotFound />} />
-      </Route>
-    </Routes>
+    <AppProvider>
+      <Routes>
+        <Route path="/" element={<Layout />}>
+          <Route index element={<Dashboard />} />
+          <Route path="parser" element={<ParserPage />} />
+          <Route path="analyzer" element={<AnalyzerPage />} />
+          <Route path="generator" element={<GeneratorPage />} />
+          <Route path="playground" element={<PlaygroundPage />} />
+          <Route path="projects" element={<ProjectsPage />} />
+          <Route path="reports" element={<ReportsPage />} />
+          <Route path="*" element={<NotFound />} />
+        </Route>
+      </Routes>
+    </AppProvider>
   );
 }
 
