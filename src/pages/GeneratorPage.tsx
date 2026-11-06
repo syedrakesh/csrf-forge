@@ -1,59 +1,344 @@
-import { Zap, Code, ShieldAlert } from 'lucide-react';
-import { Card, CardHeader, CardTitle } from '../components/ui/Card';
+import { useState, useMemo } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
+import {
+  Zap,
+  Download,
+  Copy,
+  Check,
+  PlayCircle,
+  FileCode,
+  Sliders,
+  Sparkles,
+  Terminal,
+  ExternalLink,
+} from 'lucide-react';
+import { useApp } from '../context';
+import { compilePoc } from '../lib/generator';
+import { parseInput, SAMPLE_REQUESTS } from '../lib/parser';
+import { Card, CardHeader, CardTitle, CardDescription } from '../components/ui/Card';
+import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
+import { CodeBlock } from '../components/ui/CodeBlock';
+import { Tabs } from '../components/ui/Tabs';
 
 export function GeneratorPage() {
+  const navigate = useNavigate();
+  const { currentRequest, setCurrentRequest, addGeneratedPoc } = useApp();
+
+  const [selectedFormat, setSelectedFormat] = useState<
+    'html-form' | 'html-fetch' | 'html-ajax' | 'html-img' | 'python' | 'json-trick'
+  >('html-form');
+
+  const [autoSubmit, setAutoSubmit] = useState(true);
+  const [stealthIframe, setStealthIframe] = useState(false);
+  const [delayMs, setDelayMs] = useState(0);
+  const [buttonText, setButtonText] = useState('Submit Request');
+  const [copied, setCopied] = useState(false);
+
+  const compiledPoc = useMemo(() => {
+    if (!currentRequest) return null;
+    return compilePoc(currentRequest, selectedFormat, {
+      autoSubmit,
+      stealthIframe,
+      delayMs,
+      buttonText,
+    });
+  }, [currentRequest, selectedFormat, autoSubmit, stealthIframe, delayMs, buttonText]);
+
+  const handleCopy = async () => {
+    if (!compiledPoc) return;
+    try {
+      await navigator.clipboard.writeText(compiledPoc.code);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Fallback
+    }
+  };
+
+  const handleDownload = () => {
+    if (!compiledPoc) return;
+    const isPy = selectedFormat === 'python';
+    const filename = isPy ? 'csrf_poc.py' : 'csrf_poc.html';
+    const mimeType = isPy ? 'text/x-python' : 'text/html';
+
+    const blob = new Blob([compiledPoc.code], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleSendToPlayground = () => {
+    if (!compiledPoc) return;
+    addGeneratedPoc(compiledPoc);
+    sessionStorage.setItem('csrf_forge_active_poc', JSON.stringify(compiledPoc));
+    navigate('/playground');
+  };
+
+  const handleLoadSample = (sampleId: string) => {
+    const sample = SAMPLE_REQUESTS.find((s) => s.id === sampleId);
+    if (sample) {
+      const parsed = parseInput(sample.payload);
+      if (parsed.success && parsed.request) {
+        setCurrentRequest(parsed.request);
+      }
+    }
+  };
+
+  const formatTabs = [
+    { id: 'html-form', label: 'HTML Auto-Form' },
+    { id: 'html-fetch', label: 'Fetch API' },
+    { id: 'html-ajax', label: 'XHR withCredentials' },
+    { id: 'html-img', label: 'Image Beacon' },
+    { id: 'python', label: 'Python Script' },
+    { id: 'json-trick', label: 'JSON Trick' },
+  ];
+
   return (
-    <div className="space-y-6 max-w-5xl mx-auto">
-      <div className="flex items-center justify-between">
+    <div className="space-y-6 max-w-6xl mx-auto">
+      {/* Title */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2.5">
             <h2 className="text-xl font-bold text-dark-100">CSRF PoC Generator</h2>
-            <Badge severity="info" size="sm">PHASE 5 MODULE</Badge>
+            <Badge severity="secure" size="sm">MULTI-VECTOR COMPILER</Badge>
           </div>
           <p className="text-xs text-dark-400 mt-1 font-mono">
-            MULTI-VECTOR EXPLOIT PROOF-OF-CONCEPT COMPILER
+            AUTO-SUBMIT FORMS • ASYNC BEACONS • PYTHON SCRIPT REGRESSION HARNESS
           </p>
         </div>
+
+        {compiledPoc && (
+          <div className="flex items-center gap-2">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={handleDownload}
+              leftIcon={<Download className="w-3.5 h-3.5" />}
+            >
+              Download PoC
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={handleSendToPlayground}
+              rightIcon={<PlayCircle className="w-3.5 h-3.5" />}
+            >
+              Test in Playground
+            </Button>
+          </div>
+        )}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm">
-              <Code className="w-4 h-4 text-cyber-400" />
-              HTML Auto-Submit Form
-            </CardTitle>
-          </CardHeader>
-          <p className="text-xs text-dark-400">
-            Hidden DOM form with JavaScript execution to test standard browser submission.
-          </p>
-        </Card>
+      {/* No Request State */}
+      {!currentRequest && (
+        <Card className="text-center py-12 px-6">
+          <div className="max-w-md mx-auto space-y-4">
+            <div className="p-3 w-12 h-12 rounded-full bg-cyber-950 border border-cyber-500/30 text-cyber-400 mx-auto flex items-center justify-center">
+              <Zap className="w-6 h-6" />
+            </div>
+            <div>
+              <h3 className="text-base font-semibold text-dark-100">No Request Loaded</h3>
+              <p className="text-xs text-dark-400 mt-1">
+                To generate an exploit proof of concept, parse a request first or load a sample scenario.
+              </p>
+            </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm">
-              <Zap className="w-4 h-4 text-cyber-400" />
-              Fetch / XHR with Credentials
-            </CardTitle>
-          </CardHeader>
-          <p className="text-xs text-dark-400">
-            Modern asynchronous payload using withCredentials=true to evaluate CORS preflight defenses.
-          </p>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+              <Link to="/parser">
+                <Button variant="primary" size="sm" leftIcon={<FileCode className="w-3.5 h-3.5" />}>
+                  Go to Request Parser
+                </Button>
+              </Link>
+              <Button
+                variant="secondary"
+                size="sm"
+                leftIcon={<Sparkles className="w-3.5 h-3.5" />}
+                onClick={() => handleLoadSample('sample-bank-transfer')}
+              >
+                Load Sample Bank Transfer
+              </Button>
+            </div>
+          </div>
         </Card>
+      )}
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm">
-              <ShieldAlert className="w-4 h-4 text-cyber-400" />
-              Image & Link Beacon
-            </CardTitle>
-          </CardHeader>
-          <p className="text-xs text-dark-400">
-            Lightweight zero-interaction GET exploit via DOM media tag embedding.
-          </p>
-        </Card>
-      </div>
+      {/* Generator Workspace */}
+      {currentRequest && compiledPoc && (
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          {/* Main Code View (3 cols) */}
+          <div className="lg:col-span-3 space-y-4">
+            {/* Format Selector */}
+            <div className="p-2 bg-dark-900 border border-dark-800 rounded-lg">
+              <Tabs
+                variant="pills"
+                tabs={formatTabs}
+                activeTab={selectedFormat}
+                onChange={(id) => setSelectedFormat(id as typeof selectedFormat)}
+              />
+            </div>
+
+            {/* Target Summary Strip */}
+            <div className="flex flex-wrap items-center justify-between gap-2 p-3 bg-dark-950 border border-dark-800 rounded-lg text-xs font-mono">
+              <div className="flex items-center gap-2">
+                <Badge
+                  severity={
+                    currentRequest.method === 'POST' || currentRequest.method === 'PUT' ? 'high' : 'neutral'
+                  }
+                  size="sm"
+                >
+                  {currentRequest.method}
+                </Badge>
+                <span className="text-dark-200 font-semibold break-all">{currentRequest.url}</span>
+              </div>
+              <span className="text-dark-500">{compiledPoc.description}</span>
+            </div>
+
+            {/* Code Output Card */}
+            <Card glow className="relative">
+              <div className="flex items-center justify-between pb-3 mb-2 border-b border-dark-800 text-xs">
+                <span className="font-mono text-dark-400 flex items-center gap-2">
+                  <Terminal className="w-3.5 h-3.5 text-cyber-400" />
+                  {selectedFormat === 'python' ? 'PYTHON SCRIPT' : 'STANDALONE HTML EXPLOIT'}
+                </span>
+
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleCopy}
+                    leftIcon={
+                      copied ? <Check className="w-3.5 h-3.5 text-cyber-400" /> : <Copy className="w-3.5 h-3.5" />
+                    }
+                  >
+                    {copied ? 'Copied' : 'Copy'}
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={handleDownload}
+                    leftIcon={<Download className="w-3.5 h-3.5" />}
+                  >
+                    Save
+                  </Button>
+                </div>
+              </div>
+
+              <CodeBlock
+                code={compiledPoc.code}
+                language={selectedFormat === 'python' ? 'python' : 'html'}
+                showLineNumbers
+                maxHeight="420px"
+              />
+            </Card>
+          </div>
+
+          {/* Configuration Sidebar (1 col) */}
+          <div className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm">
+                  <Sliders className="w-4 h-4 text-cyber-400" />
+                  Attack Parameters
+                </CardTitle>
+                <CardDescription>Customize payload behavior</CardDescription>
+              </CardHeader>
+
+              <div className="space-y-4 text-xs font-mono">
+                {/* Auto-Submit */}
+                <div className="flex items-center justify-between">
+                  <label htmlFor="autoSubmitToggle" className="text-dark-300 font-medium">Auto-Submit</label>
+                  <input
+                    id="autoSubmitToggle"
+                    type="checkbox"
+                    checked={autoSubmit}
+                    onChange={(e) => setAutoSubmit(e.target.checked)}
+                    className="w-4 h-4 accent-cyber-500 rounded cursor-pointer"
+                  />
+                </div>
+
+                {/* Stealth Iframe */}
+                {selectedFormat === 'html-form' && (
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <label htmlFor="stealthIframeToggle" className="text-dark-300 font-medium block">Stealth Iframe</label>
+                      <span className="text-[10px] text-dark-500 font-sans">Swallows redirect</span>
+                    </div>
+                    <input
+                      id="stealthIframeToggle"
+                      type="checkbox"
+                      checked={stealthIframe}
+                      onChange={(e) => setStealthIframe(e.target.checked)}
+                      className="w-4 h-4 accent-cyber-500 rounded cursor-pointer"
+                    />
+                  </div>
+                )}
+
+                {/* Delay in ms */}
+                {autoSubmit && (
+                  <div className="space-y-1">
+                    <label className="text-dark-400 flex justify-between">
+                      <span>Execution Delay:</span>
+                      <span className="text-cyber-400">{delayMs} ms</span>
+                    </label>
+                    <input
+                      type="range"
+                      min={0}
+                      max={5000}
+                      step={250}
+                      value={delayMs}
+                      onChange={(e) => setDelayMs(Number(e.target.value))}
+                      className="w-full accent-cyber-500"
+                    />
+                  </div>
+                )}
+
+                {/* Button Text */}
+                {!autoSubmit && (
+                  <div className="space-y-1">
+                    <label className="text-dark-400">Manual Button Text:</label>
+                    <input
+                      type="text"
+                      value={buttonText}
+                      onChange={(e) => setButtonText(e.target.value)}
+                      className="w-full bg-dark-950 border border-dark-800 rounded px-2.5 py-1.5 text-xs text-dark-200"
+                    />
+                  </div>
+                )}
+              </div>
+            </Card>
+
+            {/* Quick Navigation Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm">
+                  <PlayCircle className="w-4 h-4 text-cyber-400" />
+                  Live Verification
+                </CardTitle>
+              </CardHeader>
+              <p className="text-xs text-dark-400 leading-relaxed">
+                Test this exploit in our sandboxed isolated iframe playground to verify submission behavior without leaking cross-origin data.
+              </p>
+              <div className="pt-3">
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={handleSendToPlayground}
+                  className="w-full"
+                  rightIcon={<ExternalLink className="w-3.5 h-3.5" />}
+                >
+                  Open in Playground
+                </Button>
+              </div>
+            </Card>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
