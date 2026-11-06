@@ -3,39 +3,75 @@ import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import App from '../App';
 
-describe('App', () => {
-  it('renders the dashboard page', () => {
+describe('App & Routing', () => {
+  it('renders the dashboard page on root route', () => {
     render(
-      <MemoryRouter>
+      <MemoryRouter initialEntries={['/']}>
         <App />
       </MemoryRouter>
     );
-    expect(screen.getByRole('heading', { name: 'Dashboard' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: /Security Operations Dashboard/i })
+    ).toBeInTheDocument();
   });
 
-  it('renders the quick start section', () => {
+  it('navigates to the Request Parser page', () => {
     render(
-      <MemoryRouter>
+      <MemoryRouter initialEntries={['/parser']}>
         <App />
       </MemoryRouter>
     );
-    expect(screen.getByText('Quick Start')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /HTTP & cURL Request Parser/i })).toBeInTheDocument();
   });
 
-  it('renders the sidebar navigation', () => {
+  it('navigates to the Analyzer page', () => {
     render(
-      <MemoryRouter>
+      <MemoryRouter initialEntries={['/analyzer']}>
         <App />
       </MemoryRouter>
     );
-    expect(screen.getByText('Request Parser')).toBeInTheDocument();
-    expect(screen.getByText('Analyzer')).toBeInTheDocument();
-    expect(screen.getByText('PoC Generator')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /CSRF Vulnerability Analyzer/i })).toBeInTheDocument();
   });
 
-  it('shows 404 for unknown routes', () => {
+  it('navigates to the Generator page', () => {
     render(
-      <MemoryRouter initialEntries={['/unknown-page']}>
+      <MemoryRouter initialEntries={['/generator']}>
+        <App />
+      </MemoryRouter>
+    );
+    expect(screen.getByRole('heading', { name: /CSRF PoC Generator/i })).toBeInTheDocument();
+  });
+
+  it('navigates to the Playground page', () => {
+    render(
+      <MemoryRouter initialEntries={['/playground']}>
+        <App />
+      </MemoryRouter>
+    );
+    expect(screen.getByRole('heading', { name: /PoC Editor & Playground/i })).toBeInTheDocument();
+  });
+
+  it('navigates to the Projects page', () => {
+    render(
+      <MemoryRouter initialEntries={['/projects']}>
+        <App />
+      </MemoryRouter>
+    );
+    expect(screen.getByRole('heading', { name: /Project & Template Manager/i })).toBeInTheDocument();
+  });
+
+  it('navigates to the Reports page', () => {
+    render(
+      <MemoryRouter initialEntries={['/reports']}>
+        <App />
+      </MemoryRouter>
+    );
+    expect(screen.getByRole('heading', { name: /Export & Vulnerability Reporting/i })).toBeInTheDocument();
+  });
+
+  it('renders 404 for non-existent routes', () => {
+    render(
+      <MemoryRouter initialEntries={['/unknown-route-123']}>
         <App />
       </MemoryRouter>
     );

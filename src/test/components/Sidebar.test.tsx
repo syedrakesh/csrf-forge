@@ -19,12 +19,12 @@ describe('Sidebar', () => {
     expect(screen.getByText('Reports')).toBeInTheDocument();
   });
 
-  it('renders the brand section', () => {
+  it('renders client-side mode indicator', () => {
     render(
       <MemoryRouter>
         <Sidebar />
       </MemoryRouter>
     );
-    expect(screen.getByText('PoC Generator & Analyzer')).toBeInTheDocument();
+    expect(screen.getByText('CLIENT-SIDE')).toBeInTheDocument();
   });
 });

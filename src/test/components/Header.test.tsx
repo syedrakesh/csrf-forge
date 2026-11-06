@@ -1,16 +1,25 @@
 import { describe, it, expect } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { Header } from '../../components/layout/Header';
 
 describe('Header', () => {
-  it('renders the application name', () => {
+  it('renders system status badge', () => {
     render(<Header />);
-    expect(screen.getByText('CSRF')).toBeInTheDocument();
-    expect(screen.getByText('Forge')).toBeInTheDocument();
+    expect(screen.getByText('ANALYZER ACTIVE')).toBeInTheDocument();
   });
 
-  it('renders the version number', () => {
+  it('renders isolation info', () => {
     render(<Header />);
-    expect(screen.getByText('v1.0.0')).toBeInTheDocument();
+    expect(screen.getByText('ISOLATION: SECURE SANDBOX')).toBeInTheDocument();
+  });
+
+  it('opens help modal on clicking guide button', () => {
+    render(<Header />);
+    const guideBtn = screen.getByRole('button', { name: /guide/i });
+    fireEvent.click(guideBtn);
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    expect(
+      screen.getByText('CSRF Forge — Security Testing Guide')
+    ).toBeInTheDocument();
   });
 });
