@@ -263,6 +263,7 @@ export function ReportsPage() {
                 { id: 'markdown', label: 'Markdown (.md)', desc: 'Standard GitHub / Bug Bounty format' },
                 { id: 'html', label: 'Standalone HTML (.html)', desc: 'Client report with print/PDF layout' },
                 { id: 'json', label: 'Structured JSON (.json)', desc: 'OWASP / DefectDojo compatible' },
+                { id: 'sarif', label: 'OASIS SARIF (.sarif)', desc: 'GitHub Code Scanning & SAST compatible' },
               ].map((fmt) => (
                 <button
                   key={fmt.id}

@@ -5,6 +5,7 @@ import { generateFetchPoc, generateXhrPoc } from './fetchXhrGenerator';
 import { generateImageBeaconPoc } from './imageBeaconGenerator';
 import { generatePythonScriptPoc } from './pythonScriptGenerator';
 import { generateJsonCsrfPoc } from './jsonCsrfGenerator';
+import { generateWebSocketCsrfPoc } from './websocketGenerator';
 
 /**
  * Compiles a CSRF Proof-of-Concept based on format and user options.
@@ -47,6 +48,11 @@ export function compilePoc(
     case 'json-trick':
       code = generateJsonCsrfPoc(request, options);
       description = 'JSON CSRF bypass using enctype="text/plain" form trick';
+      break;
+
+    case 'websocket':
+      code = generateWebSocketCsrfPoc(request, options);
+      description = 'Cross-Site WebSocket Hijacking (CSWSH) connection payload';
       break;
 
     default:

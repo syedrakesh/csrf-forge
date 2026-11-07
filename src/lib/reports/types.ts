@@ -1,7 +1,7 @@
 import { ParsedRequest, AnalysisResult, GeneratedPoc, HttpMethod, Severity } from '../../types';
 import { RiskMetrics } from '../analyzer/riskScorer';
 
-export type ReportFormat = 'markdown' | 'html' | 'json';
+export type ReportFormat = 'markdown' | 'html' | 'json' | 'sarif';
 
 export interface ReportMetadata {
   title: string;

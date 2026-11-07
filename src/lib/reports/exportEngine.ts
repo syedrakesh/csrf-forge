@@ -4,6 +4,7 @@ import { ReportData, ReportFormat, ReportMetadata, ReportOptions } from './types
 import { generateMarkdownReport } from './markdownReport';
 import { generateHtmlReport } from './htmlReport';
 import { generateJsonReport } from './jsonReport';
+import { generateSarifReport } from './sarifReport';
 
 /**
  * Extracts a clean hostname from a target URL string.
@@ -113,6 +114,13 @@ export function exportReport(
         filename: `csrf-audit-${safeHost}-${dateStr}.json`,
         mimeType: 'application/json;charset=utf-8',
         format: 'json',
+      };
+    case 'sarif':
+      return {
+        content: generateSarifReport(data, options),
+        filename: `csrf-audit-${safeHost}-${dateStr}.sarif`,
+        mimeType: 'application/sarif+json;charset=utf-8',
+        format: 'sarif',
       };
   }
 }
