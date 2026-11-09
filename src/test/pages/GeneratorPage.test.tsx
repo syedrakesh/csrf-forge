@@ -82,4 +82,31 @@ describe('GeneratorPage UI', () => {
 
     expect(screen.getByText('STANDALONE HTML EXPLOIT')).toBeInTheDocument();
   });
+
+  it('opens custom builder, updates parameters, and generates custom CRLF URL', () => {
+    render(
+      <MemoryRouter>
+        <AppProvider>
+          <GeneratorPage />
+        </AppProvider>
+      </MemoryRouter>
+    );
+
+    const loadBtn = screen.getByRole('button', { name: /Load Sample Bank Transfer/i });
+    fireEvent.click(loadBtn);
+
+    const preflightCheckbox = screen.getByLabelText(/Cookie \/ CRLF Injection/i);
+    fireEvent.click(preflightCheckbox);
+
+    const openBuilderBtn = screen.getByRole('button', { name: /Custom Builder/i });
+    fireEvent.click(openBuilderBtn);
+
+    expect(screen.getByText(/Construct custom CRLF payload for any target endpoint/i)).toBeInTheDocument();
+
+    const applyBtn = screen.getByRole('button', { name: /Generate & Apply URL/i });
+    fireEvent.click(applyBtn);
+
+    const urlInput = screen.getByPlaceholderText(/victim\.com/i) as HTMLInputElement;
+    expect(urlInput.value).toContain('test%0d%0aSet-Cookie:%20csrfKey=YOUR-KEY%3b%20SameSite=None');
+  });
 });

