@@ -5,4 +5,5 @@ export * from './imageBeaconGenerator';
 export * from './pythonScriptGenerator';
 export * from './jsonCsrfGenerator';
 export * from './websocketGenerator';
+export * from './urlBuilder';
 export * from './pocCompiler';

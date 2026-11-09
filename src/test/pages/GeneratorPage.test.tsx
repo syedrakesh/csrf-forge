@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { AppProvider } from '../../context';
@@ -83,7 +83,15 @@ describe('GeneratorPage UI', () => {
     expect(screen.getByText('STANDALONE HTML EXPLOIT')).toBeInTheDocument();
   });
 
-  it('opens custom builder, updates parameters, and generates custom CRLF URL', () => {
+  it('generates copyable cookie injection URL for Burp Suite Repeater', async () => {
+    // Mock navigator.clipboard
+    const writeTextMock = vi.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, {
+      clipboard: {
+        writeText: writeTextMock,
+      },
+    });
+
     render(
       <MemoryRouter>
         <AppProvider>
@@ -98,15 +106,30 @@ describe('GeneratorPage UI', () => {
     const preflightCheckbox = screen.getByLabelText(/Cookie \/ CRLF Injection/i);
     fireEvent.click(preflightCheckbox);
 
-    const openBuilderBtn = screen.getByRole('button', { name: /Custom Builder/i });
-    fireEvent.click(openBuilderBtn);
+    const customBuilderBtn = screen.getByRole('button', { name: /Custom Builder/i });
+    fireEvent.click(customBuilderBtn);
 
-    expect(screen.getByText(/Construct custom CRLF payload for any target endpoint/i)).toBeInTheDocument();
+    expect(screen.getByText(/Cookie Injection URL Generator/i)).toBeInTheDocument();
+    expect(screen.getByText(/For Burp Repeater & PoC/i)).toBeInTheDocument();
 
-    const applyBtn = screen.getByRole('button', { name: /Generate & Apply URL/i });
-    fireEvent.click(applyBtn);
+    const searchUrlInput = screen.getByPlaceholderText('https://example.net/?search=Hello+World');
+    fireEvent.change(searchUrlInput, {
+      target: { value: 'https://example.net/?search=Hello+World' },
+    });
 
-    const urlInput = screen.getByPlaceholderText(/victim\.com/i) as HTMLInputElement;
-    expect(urlInput.value).toContain('test%0d%0aSet-Cookie:%20csrfKey=YOUR-KEY%3b%20SameSite=None');
+    const copyRepeaterBtn = screen.getByRole('button', { name: /Copy URL for Repeater/i });
+    fireEvent.click(copyRepeaterBtn);
+
+    expect(writeTextMock).toHaveBeenCalledWith(
+      expect.stringContaining('https://example.net/?search=Hello+World%0d%0aSet-Cookie:%20csrfKey=YOUR-KEY%3b%20SameSite=None')
+    );
+
+    const insertPocBtn = screen.getByRole('button', { name: /Insert into PoC/i });
+    fireEvent.click(insertPocBtn);
+
+    const mainPreflightInput = screen.getByPlaceholderText(/victim\.com/i) as HTMLInputElement;
+    expect(mainPreflightInput.value).toContain(
+      'https://example.net/?search=Hello+World%0d%0aSet-Cookie:%20csrfKey=YOUR-KEY%3b%20SameSite=None'
+    );
   });
 });
