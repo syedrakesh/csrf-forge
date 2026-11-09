@@ -74,3 +74,4 @@ describe('SARIF Report Generator', () => {
     );
   });
 });
+

@@ -104,3 +104,4 @@ export function generateSarifReport(
 
   return JSON.stringify(sarif, null, 2);
 }
+

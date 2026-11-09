@@ -1,5 +1,5 @@
 import { ParsedRequest } from '../../types';
-import { PocGeneratorOptions, escapeHtml, escapeJsString } from './types';
+import { PocGeneratorOptions, escapeHtml, escapeJsString, extractPreflightUrl } from './types';
 
 /**
  * Generates an AJAX Fetch / XMLHttpRequest based CSRF PoC.
@@ -16,6 +16,20 @@ export function generateFetchPoc(
 
   const bodyData = request.body || '';
   const isJson = bodyData.startsWith('{') || bodyData.startsWith('[');
+
+  const preflight =
+    options.preflight?.enabled && options.preflight.url?.trim()
+      ? extractPreflightUrl(options.preflight.url)
+      : null;
+
+  const preflightSnippet = preflight
+    ? `      try {
+        statusDiv.innerText = 'Status: Dispatched pre-flight trigger / cookie injection...';
+        await fetch(${escapeJsString(preflight)}, { mode: 'no-cors' });
+      } catch (e) {
+        // Continue even if pre-flight fails or reflects non-CORS
+      }\n`
+    : '';
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -36,7 +50,7 @@ export function generateFetchPoc(
   <script>
     async function executeCsrf() {
       const statusDiv = document.getElementById('status');
-      statusDiv.innerText = 'Status: Dispatched cross-site fetch request...';
+${preflightSnippet}      statusDiv.innerText = 'Status: Dispatched cross-site fetch request...';
 
       try {
         const response = await fetch(${escapeJsString(targetUrl)}, {
@@ -80,6 +94,27 @@ export function generateXhrPoc(
   const method = request.method.toUpperCase();
   const bodyData = request.body || '';
 
+  const preflight =
+    options.preflight?.enabled && options.preflight.url?.trim()
+      ? extractPreflightUrl(options.preflight.url)
+      : null;
+
+  const triggerBody = preflight
+    ? `      var preImg = new Image();
+      preImg.onload = preImg.onerror = function() {
+        var xhr = new XMLHttpRequest();
+        xhr.open(${escapeJsString(method)}, ${escapeJsString(targetUrl)}, true);
+        xhr.withCredentials = true; // Include session cookies cross-origin
+        xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+        xhr.send(${escapeJsString(bodyData)});
+      };
+      preImg.src = ${escapeJsString(preflight)};`
+    : `      var xhr = new XMLHttpRequest();
+      xhr.open(${escapeJsString(method)}, ${escapeJsString(targetUrl)}, true);
+      xhr.withCredentials = true; // Include session cookies cross-origin
+      xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+      xhr.send(${escapeJsString(bodyData)});`;
+
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -89,19 +124,15 @@ export function generateXhrPoc(
 <body>
   <script>
     function triggerXhr() {
-      var xhr = new XMLHttpRequest();
-      xhr.open(${escapeJsString(method)}, ${escapeJsString(targetUrl)}, true);
-      xhr.withCredentials = true; // Include session cookies cross-origin
-      xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
-      xhr.send(${escapeJsString(bodyData)});
+${triggerBody}
     }
 
     ${
       autoSubmit
-        ? `window.onload = function() {
+        ? `window.addEventListener('load', function() {
       setTimeout(triggerXhr, ${delayMs});
-    };`
-        : `triggerXhr();`
+    });`
+        : `// Call triggerXhr() manually to execute`
     }
   </script>
 </body>

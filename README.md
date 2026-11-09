@@ -97,6 +97,11 @@ Generate reliable proof-of-concept exploits tailored to target endpoint architec
 | **CSWSH (WebSocket)** | Real-time WebSockets | Cross-Site WebSocket Hijacking payload (`ws://`, `wss://`) |
 | **Python 3 Script** | CI / Regression Testing | Standalone reproduction script using `requests.Session()` |
 
+#### Advanced Attack Configuration:
+- **Auto-Submit & Execution Delay**: Configurable execution timer (0–5000 ms) or manual button submission.
+- **Stealth Iframe Redirection**: Targets submissions to an invisible `<iframe>` to suppress navigation and conceal the attack.
+- **Cookie & CRLF Pre-Flight Injection**: Directly embeds pre-flight triggers (e.g. `<img src="https://...?search=%0d%0aSet-Cookie:..." onerror="...">`, `onload`, or `fetch()`) to set or toss cookies (such as in PortSwigger Web Security Academy labs where tokens are tied to non-session cookies) before the CSRF payload fires.
+
 ---
 
 ### Step 5: Isolated Execution Playground

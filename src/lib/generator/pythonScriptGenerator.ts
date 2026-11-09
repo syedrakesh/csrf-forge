@@ -1,5 +1,5 @@
 import { ParsedRequest } from '../../types';
-import { PocGeneratorOptions } from './types';
+import { PocGeneratorOptions, extractPreflightUrl } from './types';
 import { parseUrlEncodedBody } from '../parser/httpParser';
 
 /**
@@ -14,6 +14,21 @@ export function generatePythonScriptPoc(
   const cookies = request.cookies;
   const bodyParams = options.customParameters || parseUrlEncodedBody(request.body);
   const isJson = request.body.startsWith('{') || request.body.startsWith('[');
+
+  const preflight =
+    options.preflight?.enabled && options.preflight.url?.trim()
+      ? extractPreflightUrl(options.preflight.url)
+      : null;
+
+  const preflightSnippet = preflight
+    ? `    # Execute pre-flight trigger (e.g. CRLF injection / cookie drop)
+    preflight_url = ${JSON.stringify(preflight)}
+    print(f"[*] Executing pre-flight trigger: {preflight_url}")
+    try:
+        session.get(preflight_url, timeout=10)
+    except Exception as pf_err:
+        print(f"[*] Pre-flight completed with notice: {pf_err}")\n\n`
+    : '';
 
   const cookieDictStr = JSON.stringify(cookies, null, 4);
   const dataPayloadStr = isJson
@@ -46,7 +61,7 @@ def test_csrf_vulnerability():
         "Origin": "https://attacker-controlled-origin.org",
     }
 
-    url = "${url}"
+${preflightSnippet}    url = "${url}"
     ${dataPayloadStr}
 
     print(f"[*] Sending cross-origin {method} to {url}")

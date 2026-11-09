@@ -55,4 +55,31 @@ describe('GeneratorPage UI', () => {
 
     expect(screen.getByText('PYTHON SCRIPT')).toBeInTheDocument();
   });
+
+  it('enables cookie injection toggle and updates compiled PoC code', () => {
+    render(
+      <MemoryRouter>
+        <AppProvider>
+          <GeneratorPage />
+        </AppProvider>
+      </MemoryRouter>
+    );
+
+    const loadBtn = screen.getByRole('button', { name: /Load Sample Bank Transfer/i });
+    fireEvent.click(loadBtn);
+
+    const preflightCheckbox = screen.getByLabelText(/Cookie \/ CRLF Injection/i);
+    expect(preflightCheckbox).not.toBeChecked();
+
+    fireEvent.click(preflightCheckbox);
+    expect(preflightCheckbox).toBeChecked();
+
+    const loadTemplateBtn = screen.getByRole('button', { name: /Load Template/i });
+    fireEvent.click(loadTemplateBtn);
+
+    const urlInput = screen.getByPlaceholderText(/victim\.com/i) as HTMLInputElement;
+    expect(urlInput.value).toContain('YOUR-LAB-ID.web-security-academy.net');
+
+    expect(screen.getByText('STANDALONE HTML EXPLOIT')).toBeInTheDocument();
+  });
 });

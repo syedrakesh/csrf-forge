@@ -100,3 +100,4 @@ export function generateWebSocketCsrfPoc(
 
   return codeParts.join('\n');
 }
+

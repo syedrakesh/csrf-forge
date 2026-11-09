@@ -25,4 +25,16 @@ describe('Python Script Generator', () => {
     expect(script).toContain('session.post(');
     expect(script).toContain('https://security-audit.local/api/action');
   });
+
+  it('includes pre-flight trigger in Python script when preflight is enabled', () => {
+    const script = generatePythonScriptPoc(req, {
+      preflight: {
+        enabled: true,
+        url: 'https://security-audit.local/seed-cookie',
+      },
+    });
+
+    expect(script).toContain('preflight_url = "https://security-audit.local/seed-cookie"');
+    expect(script).toContain('session.get(preflight_url, timeout=10)');
+  });
 });

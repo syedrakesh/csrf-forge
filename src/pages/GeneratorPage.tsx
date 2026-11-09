@@ -33,6 +33,9 @@ export function GeneratorPage() {
   const [stealthIframe, setStealthIframe] = useState(false);
   const [delayMs, setDelayMs] = useState(0);
   const [buttonText, setButtonText] = useState('Submit Request');
+  const [preflightEnabled, setPreflightEnabled] = useState(false);
+  const [preflightUrl, setPreflightUrl] = useState('');
+  const [preflightTrigger, setPreflightTrigger] = useState<'onerror' | 'onload' | 'fetch'>('onerror');
   const [copied, setCopied] = useState(false);
 
   const compiledPoc = useMemo(() => {
@@ -42,8 +45,23 @@ export function GeneratorPage() {
       stealthIframe,
       delayMs,
       buttonText,
+      preflight: {
+        enabled: preflightEnabled,
+        url: preflightUrl,
+        triggerMode: preflightTrigger,
+      },
     });
-  }, [currentRequest, selectedFormat, autoSubmit, stealthIframe, delayMs, buttonText]);
+  }, [
+    currentRequest,
+    selectedFormat,
+    autoSubmit,
+    stealthIframe,
+    delayMs,
+    buttonText,
+    preflightEnabled,
+    preflightUrl,
+    preflightTrigger,
+  ]);
 
   const handleCopy = async () => {
     if (!compiledPoc) return;
@@ -310,6 +328,78 @@ export function GeneratorPage() {
                     />
                   </div>
                 )}
+
+                {/* Pre-flight / Cookie Injection Vector */}
+                <div className="pt-2 border-t border-dark-800 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <label htmlFor="preflightToggle" className="text-dark-300 font-medium block">
+                        Cookie / CRLF Injection
+                      </label>
+                      <span className="text-[10px] text-dark-500 font-sans">
+                        Pre-flight trigger (e.g. Set-Cookie)
+                      </span>
+                    </div>
+                    <input
+                      id="preflightToggle"
+                      type="checkbox"
+                      checked={preflightEnabled}
+                      onChange={(e) => setPreflightEnabled(e.target.checked)}
+                      className="w-4 h-4 accent-cyber-500 rounded cursor-pointer"
+                    />
+                  </div>
+
+                  {preflightEnabled && (
+                    <div className="space-y-2 p-2.5 bg-dark-950/70 border border-dark-800/80 rounded-md">
+                      <div>
+                        <div className="flex items-center justify-between mb-1">
+                          <label htmlFor="preflightUrlInput" className="text-[11px] text-dark-300 font-medium">
+                            Pre-flight URL or Payload:
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setPreflightUrl(
+                                'https://YOUR-LAB-ID.web-security-academy.net/?search=test%0d%0aSet-Cookie:%20csrfKey=YOUR-KEY%3b%20SameSite=None'
+                              )
+                            }
+                            className="text-[10px] text-cyber-400 hover:underline"
+                          >
+                            Load Template
+                          </button>
+                        </div>
+                        <input
+                          id="preflightUrlInput"
+                          type="text"
+                          value={preflightUrl}
+                          onChange={(e) => setPreflightUrl(e.target.value)}
+                          placeholder="https://victim.com/?search=x%0d%0aSet-Cookie:..."
+                          className="w-full bg-dark-900 border border-dark-700/80 rounded px-2 py-1 text-xs text-dark-100 placeholder-dark-600 focus:outline-none focus:border-cyber-500 font-mono"
+                        />
+                        <p className="text-[10px] text-dark-500 font-sans mt-0.5">
+                          Paste a raw CRLF URL or full &lt;img src=&quot;...&quot;&gt; tag.
+                        </p>
+                      </div>
+
+                      <div>
+                        <label className="text-[11px] text-dark-300 font-medium block mb-1">
+                          Trigger Mode:
+                        </label>
+                        <select
+                          value={preflightTrigger}
+                          onChange={(e) =>
+                            setPreflightTrigger(e.target.value as 'onerror' | 'onload' | 'fetch')
+                          }
+                          className="w-full bg-dark-900 border border-dark-700/80 rounded px-2 py-1 text-xs text-dark-200 focus:outline-none focus:border-cyber-500"
+                        >
+                          <option value="onerror">Image onerror (CRLF / Non-image)</option>
+                          <option value="onload">Image onload (Image response)</option>
+                          <option value="fetch">Fetch API (Async pre-request)</option>
+                        </select>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             </Card>
 

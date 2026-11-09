@@ -30,4 +30,27 @@ describe('Fetch and XHR Generator', () => {
     expect(poc).toContain('https://api.app.io/v1/update');
     expect(poc).toContain('POST');
   });
+
+  it('includes pre-flight trigger in Fetch PoC when preflight is enabled', () => {
+    const poc = generateFetchPoc(req, {
+      preflight: {
+        enabled: true,
+        url: 'https://api.app.io/?search=test%0d%0aSet-Cookie:token=123',
+      },
+    });
+
+    expect(poc).toContain('await fetch("https://api.app.io/?search=test%0d%0aSet-Cookie:token=123", { mode: \'no-cors\' });');
+  });
+
+  it('includes pre-flight image trigger in XHR PoC when preflight is enabled', () => {
+    const poc = generateXhrPoc(req, {
+      preflight: {
+        enabled: true,
+        url: 'https://api.app.io/seed-cookie',
+      },
+    });
+
+    expect(poc).toContain('preImg.src = "https://api.app.io/seed-cookie";');
+    expect(poc).toContain('preImg.onload = preImg.onerror = function()');
+  });
 });
