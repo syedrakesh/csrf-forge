@@ -46,4 +46,33 @@ describe('Top-Level Navigation PoC Generator', () => {
     expect(poc).toContain('Click to Update');
     expect(poc).toContain('onclick="window.location.href=');
   });
+
+  it('appends _method override to existing URL when methodOverride is set', () => {
+    const simpleReq: ParsedRequest = {
+      id: 'req-nav-override',
+      method: 'GET',
+      url: 'https://victim.com/change-email?email=test%40test.com',
+      headers: { host: 'victim.com' },
+      cookies: { session: 'xyz' },
+      body: '',
+      contentType: 'application/x-www-form-urlencoded',
+      timestamp: Date.now(),
+    };
+
+    const poc = generateNavigationPoc(simpleReq, { methodOverride: 'POST' });
+
+    expect(poc).toContain('_method=POST');
+    expect(poc).toContain('window.location.href');
+  });
+
+  it('includes _method in custom parameters when both customParameters and methodOverride are set', () => {
+    const poc = generateNavigationPoc(req, {
+      customParameters: { email: 'pwned@attacker.net' },
+      methodOverride: 'DELETE',
+    });
+
+    expect(poc).toContain('email=pwned%40attacker.net');
+    expect(poc).toContain('_method=DELETE');
+  });
 });
+

@@ -169,4 +169,20 @@ describe('GeneratorPage UI', () => {
 
     expect(recipientInput).toHaveValue('custom_wallet_123');
   });
+
+  it('shows method override dropdown for GET requests', () => {
+    render(
+      <MemoryRouter>
+        <AppProvider>
+          <GeneratorPage />
+        </AppProvider>
+      </MemoryRouter>
+    );
+
+    const loadBtn = screen.getByRole('button', { name: /Load Sample Bank Transfer/i });
+    fireEvent.click(loadBtn);
+
+    // Bank transfer sample is a POST request, so method override should not show
+    expect(screen.queryByLabelText(/Method Override/i)).not.toBeInTheDocument();
+  });
 });

@@ -15,6 +15,10 @@ export interface PocGeneratorOptions {
   comments?: boolean;
   customParameters?: Record<string, string>;
   preflight?: PreflightPayloadOption;
+  /** When true, GET query params stay in the URL as a direct redirect/img beacon instead of hidden form inputs */
+  keepQueryInUrl?: boolean;
+  /** Inject a method override parameter (e.g. _method=POST) into the generated PoC */
+  methodOverride?: string;
 }
 
 export function extractPreflightUrl(input: string): string {

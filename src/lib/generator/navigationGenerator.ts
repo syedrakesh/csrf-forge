@@ -18,8 +18,17 @@ export function generateNavigationPoc(
   let targetUrl = request.url;
   if (options.customParameters && Object.keys(options.customParameters).length > 0) {
     const baseUrl = request.url.split('?')[0] || request.url;
-    const searchParams = new URLSearchParams(options.customParameters);
+    const allParams = { ...options.customParameters };
+    // Inject method override into URL when requested
+    if (options.methodOverride && !allParams['_method']) {
+      allParams['_method'] = options.methodOverride;
+    }
+    const searchParams = new URLSearchParams(allParams);
     targetUrl = `${baseUrl}?${searchParams.toString()}`;
+  } else if (options.methodOverride) {
+    // Append method override to existing URL
+    const separator = request.url.includes('?') ? '&' : '?';
+    targetUrl = `${request.url}${separator}_method=${encodeURIComponent(options.methodOverride)}`;
   }
 
   const preflight =
@@ -78,3 +87,4 @@ ${commentsHeader}${preflightHtml}  <h2>Security Verification Test</h2>
 </body>
 </html>`;
 }
+

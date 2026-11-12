@@ -55,6 +55,8 @@ export function GeneratorPage() {
   const [paramOverrides, setParamOverrides] = useState<Record<string, string>>({});
   const [copied, setCopied] = useState(false);
   const [repeaterCopied, setRepeaterCopied] = useState(false);
+  const [keepQueryInUrl, setKeepQueryInUrl] = useState(false);
+  const [methodOverride, setMethodOverride] = useState<string>('');
 
   const defaultParams = useMemo(() => {
     if (!currentRequest) return {};
@@ -69,6 +71,11 @@ export function GeneratorPage() {
   const effectiveParams = useMemo(() => {
     return { ...defaultParams, ...paramOverrides };
   }, [defaultParams, paramOverrides]);
+
+  const isGetWithQueryParams = useMemo(() => {
+    if (!currentRequest) return false;
+    return currentRequest.method === 'GET' && Object.keys(extractQueryParams(currentRequest.url)).length > 0;
+  }, [currentRequest]);
 
   const liveConstructedUrl = useMemo(() => {
     const defaultUrl = currentRequest?.url
@@ -121,6 +128,8 @@ export function GeneratorPage() {
         url: preflightUrl,
         triggerMode: preflightTrigger,
       },
+      keepQueryInUrl,
+      methodOverride: methodOverride || undefined,
     });
   }, [
     currentRequest,
@@ -133,6 +142,8 @@ export function GeneratorPage() {
     preflightEnabled,
     preflightUrl,
     preflightTrigger,
+    keepQueryInUrl,
+    methodOverride,
   ]);
 
   const handleCopy = async () => {
@@ -354,7 +365,7 @@ export function GeneratorPage() {
                 </div>
 
                 {/* Stealth Iframe */}
-                {selectedFormat === 'html-form' && (
+                {selectedFormat === 'html-form' && !keepQueryInUrl && (
                   <div className="flex items-center justify-between">
                     <div>
                       <label htmlFor="stealthIframeToggle" className="text-dark-300 font-medium block">Stealth Iframe</label>
@@ -367,6 +378,53 @@ export function GeneratorPage() {
                       onChange={(e) => setStealthIframe(e.target.checked)}
                       className="w-4 h-4 accent-cyber-500 rounded cursor-pointer"
                     />
+                  </div>
+                )}
+
+                {/* Keep Query Params in URL (GET requests only) */}
+                {isGetWithQueryParams && (selectedFormat === 'html-form' || selectedFormat === 'html-navigation') && (
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <label htmlFor="keepQueryToggle" className="text-dark-300 font-medium block">
+                        Keep Params in URL
+                      </label>
+                      <span className="text-[10px] text-dark-500 font-sans">
+                        Direct URL redirect (no form)
+                      </span>
+                    </div>
+                    <input
+                      id="keepQueryToggle"
+                      type="checkbox"
+                      checked={keepQueryInUrl}
+                      onChange={(e) => setKeepQueryInUrl(e.target.checked)}
+                      className="w-4 h-4 accent-cyber-500 rounded cursor-pointer"
+                    />
+                  </div>
+                )}
+
+                {/* Method Override (_method parameter) */}
+                {currentRequest?.method === 'GET' && (
+                  <div className="space-y-1">
+                    <div>
+                      <label htmlFor="methodOverrideSelect" className="text-dark-300 font-medium block">
+                        Method Override (_method)
+                      </label>
+                      <span className="text-[10px] text-dark-500 font-sans">
+                        Inject _method param for SameSite bypass
+                      </span>
+                    </div>
+                    <select
+                      id="methodOverrideSelect"
+                      value={methodOverride}
+                      onChange={(e) => setMethodOverride(e.target.value)}
+                      className="w-full bg-dark-950 border border-dark-800 rounded px-2 py-1 text-xs text-dark-200"
+                    >
+                      <option value="">None (no override)</option>
+                      <option value="POST">_method=POST</option>
+                      <option value="PUT">_method=PUT</option>
+                      <option value="DELETE">_method=DELETE</option>
+                      <option value="PATCH">_method=PATCH</option>
+                    </select>
                   </div>
                 )}
 

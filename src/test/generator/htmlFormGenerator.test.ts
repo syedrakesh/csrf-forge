@@ -148,4 +148,89 @@ describe('HTML Form Generator', () => {
     expect(poc).toContain('<input type="hidden" name="amount" value="9999" />');
     expect(poc).toContain('<input type="hidden" name="to" value="attacker" />');
   });
+
+  it('generates direct URL redirect PoC when keepQueryInUrl is true for GET requests', () => {
+    const getReq: ParsedRequest = {
+      id: 'req-get-direct-1',
+      method: 'GET',
+      url: 'https://0a8b.web-security-academy.net/my-account/change-email?email=wiener3%40normal-user.net&submit=1',
+      headers: { host: '0a8b.web-security-academy.net' },
+      cookies: { session: 'rUzH4KF4' },
+      body: '',
+      contentType: 'application/x-www-form-urlencoded',
+      timestamp: Date.now(),
+    };
+
+    const poc = generateHtmlFormPoc(getReq, { keepQueryInUrl: true });
+
+    // Should NOT contain a <form> element
+    expect(poc).not.toContain('<form');
+    expect(poc).not.toContain('</form>');
+    // Should contain <img src="full-url"> beacon
+    expect(poc).toContain('<img src=');
+    expect(poc).toContain('change-email?');
+    expect(poc).toContain('submit=1');
+    // Should contain window.location redirect
+    expect(poc).toContain('window.location.href =');
+    // Should contain the email param in the URL
+    expect(poc).toContain('email=');
+  });
+
+  it('falls back to form with hidden inputs when keepQueryInUrl is false (default)', () => {
+    const getReq: ParsedRequest = {
+      id: 'req-get-form-1',
+      method: 'GET',
+      url: 'https://bank.com/transfer?amount=50&to=alice',
+      headers: { host: 'bank.com' },
+      cookies: { session: 's1' },
+      body: '',
+      contentType: 'application/x-www-form-urlencoded',
+      timestamp: Date.now(),
+    };
+
+    const poc = generateHtmlFormPoc(getReq, { keepQueryInUrl: false });
+
+    // Should be a standard form
+    expect(poc).toContain('<form');
+    expect(poc).toContain('<input type="hidden" name="amount" value="50" />');
+    expect(poc).not.toContain('window.location.href');
+  });
+
+  it('injects _method override parameter into PoC when methodOverride is set', () => {
+    const getReq: ParsedRequest = {
+      id: 'req-get-override-1',
+      method: 'GET',
+      url: 'https://victim.com/change-email?email=test%40test.com',
+      headers: { host: 'victim.com' },
+      cookies: { session: 'abc' },
+      body: '',
+      contentType: 'application/x-www-form-urlencoded',
+      timestamp: Date.now(),
+    };
+
+    const poc = generateHtmlFormPoc(getReq, { methodOverride: 'POST' });
+
+    // Should include _method=POST as a hidden input (form mode)
+    expect(poc).toContain('name="_method" value="POST"');
+  });
+
+  it('injects _method override into direct URL when keepQueryInUrl + methodOverride are both set', () => {
+    const getReq: ParsedRequest = {
+      id: 'req-get-direct-override',
+      method: 'GET',
+      url: 'https://victim.com/change-email?email=test%40test.com',
+      headers: { host: 'victim.com' },
+      cookies: { session: 'abc' },
+      body: '',
+      contentType: 'application/x-www-form-urlencoded',
+      timestamp: Date.now(),
+    };
+
+    const poc = generateHtmlFormPoc(getReq, { keepQueryInUrl: true, methodOverride: 'POST' });
+
+    // Direct URL mode — _method should be in the URL, not a hidden input
+    expect(poc).not.toContain('<form');
+    expect(poc).toContain('_method=POST');
+    expect(poc).toContain('window.location.href');
+  });
 });
