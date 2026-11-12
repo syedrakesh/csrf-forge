@@ -132,4 +132,41 @@ describe('GeneratorPage UI', () => {
       'https://example.net/?search=Hello+World%0d%0aSet-Cookie:%20csrfKey=YOUR-KEY%3b%20SameSite=None'
     );
   });
+
+  it('switches to Top-Level Redirect format', () => {
+    render(
+      <MemoryRouter>
+        <AppProvider>
+          <GeneratorPage />
+        </AppProvider>
+      </MemoryRouter>
+    );
+
+    const loadBtn = screen.getByRole('button', { name: /Load Sample Bank Transfer/i });
+    fireEvent.click(loadBtn);
+
+    const redirectTab = screen.getByText('Top-Level Redirect');
+    fireEvent.click(redirectTab);
+
+    expect(screen.getByText(/Top-level window\.location navigation payload/i)).toBeInTheDocument();
+  });
+
+  it('edits parameter values via Parameter Values editor and updates PoC', () => {
+    render(
+      <MemoryRouter>
+        <AppProvider>
+          <GeneratorPage />
+        </AppProvider>
+      </MemoryRouter>
+    );
+
+    const loadBtn = screen.getByRole('button', { name: /Load Sample Bank Transfer/i });
+    fireEvent.click(loadBtn);
+
+    expect(screen.getByText('Parameter Values')).toBeInTheDocument();
+    const recipientInput = screen.getByDisplayValue('attacker_wallet_99');
+    fireEvent.change(recipientInput, { target: { value: 'custom_wallet_123' } });
+
+    expect(recipientInput).toHaveValue('custom_wallet_123');
+  });
 });

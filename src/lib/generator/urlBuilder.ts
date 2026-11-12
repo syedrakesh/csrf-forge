@@ -45,3 +45,4 @@ export function buildCookieInjectionUrl(params: CookieInjectionUrlParams): strin
   const param = customParam?.trim() || 'search';
   return `${trimmedUrl}?${encodeURIComponent(param)}=test${injection}`;
 }
+

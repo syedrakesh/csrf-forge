@@ -63,3 +63,4 @@ describe('CRLF Cookie Injection URL Builder', () => {
     expect(url).toBe('');
   });
 });
+

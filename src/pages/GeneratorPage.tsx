@@ -16,6 +16,7 @@ import {
 import { useApp } from '../context';
 import { compilePoc, buildCookieInjectionUrl } from '../lib/generator';
 import { parseInput, SAMPLE_REQUESTS } from '../lib/parser';
+import { extractQueryParams, parseUrlEncodedBody } from '../lib/parser/httpParser';
 import { Card, CardHeader, CardTitle, CardDescription } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
@@ -27,7 +28,13 @@ export function GeneratorPage() {
   const { currentRequest, setCurrentRequest, addGeneratedPoc } = useApp();
 
   const [selectedFormat, setSelectedFormat] = useState<
-    'html-form' | 'html-fetch' | 'html-ajax' | 'html-img' | 'python' | 'json-trick'
+    | 'html-form'
+    | 'html-navigation'
+    | 'html-fetch'
+    | 'html-ajax'
+    | 'html-img'
+    | 'python'
+    | 'json-trick'
   >('html-form');
 
   const [autoSubmit, setAutoSubmit] = useState(true);
@@ -45,8 +52,23 @@ export function GeneratorPage() {
   const [builderSameSite, setBuilderSameSite] = useState<
     'None' | 'Lax' | 'Strict' | 'none'
   >('None');
+  const [paramOverrides, setParamOverrides] = useState<Record<string, string>>({});
   const [copied, setCopied] = useState(false);
   const [repeaterCopied, setRepeaterCopied] = useState(false);
+
+  const defaultParams = useMemo(() => {
+    if (!currentRequest) return {};
+    const isGet = currentRequest.method === 'GET';
+    const query = extractQueryParams(currentRequest.url);
+    if (isGet && Object.keys(query).length > 0) {
+      return query;
+    }
+    return parseUrlEncodedBody(currentRequest.body);
+  }, [currentRequest]);
+
+  const effectiveParams = useMemo(() => {
+    return { ...defaultParams, ...paramOverrides };
+  }, [defaultParams, paramOverrides]);
 
   const liveConstructedUrl = useMemo(() => {
     const defaultUrl = currentRequest?.url
@@ -93,6 +115,7 @@ export function GeneratorPage() {
       stealthIframe,
       delayMs,
       buttonText,
+      customParameters: Object.keys(effectiveParams).length > 0 ? effectiveParams : undefined,
       preflight: {
         enabled: preflightEnabled,
         url: preflightUrl,
@@ -106,6 +129,7 @@ export function GeneratorPage() {
     stealthIframe,
     delayMs,
     buttonText,
+    effectiveParams,
     preflightEnabled,
     preflightUrl,
     preflightTrigger,
@@ -158,6 +182,7 @@ export function GeneratorPage() {
 
   const formatTabs = [
     { id: 'html-form', label: 'HTML Auto-Form' },
+    { id: 'html-navigation', label: 'Top-Level Redirect' },
     { id: 'html-fetch', label: 'Fetch API' },
     { id: 'html-ajax', label: 'XHR withCredentials' },
     { id: 'html-img', label: 'Image Beacon' },
@@ -374,6 +399,51 @@ export function GeneratorPage() {
                       onChange={(e) => setButtonText(e.target.value)}
                       className="w-full bg-dark-950 border border-dark-800 rounded px-2.5 py-1.5 text-xs text-dark-200"
                     />
+                  </div>
+                )}
+
+                {/* Parameter Values Override Editor */}
+                {Object.keys(defaultParams).length > 0 && (
+                  <div className="pt-2 border-t border-dark-800 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <span className="text-dark-300 font-medium block">
+                          Parameter Values
+                        </span>
+                        <span className="text-[10px] text-dark-500 font-sans">
+                          Auto-extracted from {currentRequest?.method === 'GET' ? 'URL query' : 'request body'}
+                        </span>
+                      </div>
+                      {Object.keys(paramOverrides).length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setParamOverrides({})}
+                          className="text-[10px] text-cyber-400 hover:underline font-mono"
+                        >
+                          Reset
+                        </button>
+                      )}
+                    </div>
+                    <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
+                      {Object.entries(effectiveParams).map(([key, val]) => (
+                        <div key={key} className="space-y-0.5">
+                          <label className="text-[10px] text-dark-400 font-mono block truncate">
+                            {key}:
+                          </label>
+                          <input
+                            type="text"
+                            value={val}
+                            onChange={(e) =>
+                              setParamOverrides((prev) => ({
+                                ...prev,
+                                [key]: e.target.value,
+                              }))
+                            }
+                            className="w-full bg-dark-950 border border-dark-800 rounded px-2 py-1 text-xs text-dark-200 font-mono focus:border-cyber-500 focus:outline-none"
+                          />
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
 

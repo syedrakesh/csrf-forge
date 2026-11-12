@@ -1,7 +1,7 @@
 import { ParsedRequest, AnalysisResult, VulnerabilityFinding } from '../../types';
 import { calculateRiskScore } from './riskScorer';
 import { REMEDIATION_CATALOG } from './remediations';
-import { parseUrlEncodedBody } from '../parser/httpParser';
+import { parseUrlEncodedBody, extractQueryParams } from '../parser/httpParser';
 
 // Known anti-CSRF token patterns in headers and body
 const CSRF_HEADER_KEYS = [
@@ -71,6 +71,24 @@ export function analyzeCsrfRequest(request: ParsedRequest): AnalysisResult {
         severity: hasCookies ? 'critical' : 'high',
         category: 'HTTP Method Architecture',
         recommendation: REMEDIATION_CATALOG.AVOID_GET_STATE_CHANGE?.summary ?? 'Convert endpoint to POST with CSRF tokens.',
+      });
+    }
+
+    // Check for HTTP Method Override parameter (e.g. _method=POST, method=POST, etc.)
+    const queryParams = extractQueryParams(request.url);
+    const methodOverrideParam = Object.entries(queryParams).find(([k, v]) =>
+      ['method', '_method', '_http_method'].includes(k.toLowerCase()) &&
+      ['post', 'put', 'delete', 'patch'].includes(v.toLowerCase())
+    );
+
+    if (methodOverrideParam) {
+      findings.push({
+        id: 'METHOD_OVERRIDE_DETECTED',
+        title: `HTTP Method Override via Query Parameter (${methodOverrideParam[0]}=${methodOverrideParam[1].toUpperCase()})`,
+        description: `The request overrides its HTTP method to ${methodOverrideParam[1].toUpperCase()} using query parameter '${methodOverrideParam[0]}'. Attackers can trigger this state-changing action through cross-site GET navigations, bypassing modern browser SameSite=Lax cookie restrictions.`,
+        severity: hasCookies ? 'critical' : 'high',
+        category: 'Method Override & SameSite Bypass',
+        recommendation: 'Reject method override directives in GET requests and enforce strict Anti-CSRF token verification.',
       });
     }
   }

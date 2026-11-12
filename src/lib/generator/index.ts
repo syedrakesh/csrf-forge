@@ -6,4 +6,5 @@ export * from './pythonScriptGenerator';
 export * from './jsonCsrfGenerator';
 export * from './websocketGenerator';
 export * from './urlBuilder';
+export * from './navigationGenerator';
 export * from './pocCompiler';

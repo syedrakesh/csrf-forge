@@ -1,6 +1,6 @@
 import { ParsedRequest } from '../../types';
 import { PocGeneratorOptions, escapeHtml, escapeJsString, extractPreflightUrl } from './types';
-import { parseUrlEncodedBody } from '../parser/httpParser';
+import { parseUrlEncodedBody, extractQueryParams } from '../parser/httpParser';
 
 /**
  * Generates an auto-submitting HTML form PoC.
@@ -16,9 +16,22 @@ export function generateHtmlFormPoc(
   const includeComments = options.comments !== false;
 
   // Determine parameters to include
-  const bodyParams = options.customParameters || parseUrlEncodedBody(request.body);
-  const targetUrl = request.url;
   const method = request.method.toUpperCase();
+  const isGet = method === 'GET';
+  const queryParams = extractQueryParams(request.url);
+  const parsedParams =
+    isGet && Object.keys(queryParams).length > 0
+      ? queryParams
+      : parseUrlEncodedBody(request.body);
+
+  const bodyParams = options.customParameters || parsedParams;
+
+  // For GET requests, clean the query string from the form action URL
+  // so the browser's form submission algorithm does not strip or duplicate parameters
+  const targetUrl =
+    isGet && Object.keys(queryParams).length > 0
+      ? request.url.split('?')[0] || request.url
+      : request.url;
 
   const iframeName = 'csrf_forge_stealth_frame';
   const formId = 'csrf_form';

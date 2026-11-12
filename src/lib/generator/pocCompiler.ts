@@ -6,6 +6,7 @@ import { generateImageBeaconPoc } from './imageBeaconGenerator';
 import { generatePythonScriptPoc } from './pythonScriptGenerator';
 import { generateJsonCsrfPoc } from './jsonCsrfGenerator';
 import { generateWebSocketCsrfPoc } from './websocketGenerator';
+import { generateNavigationPoc } from './navigationGenerator';
 
 /**
  * Compiles a CSRF Proof-of-Concept based on format and user options.
@@ -22,6 +23,11 @@ export function compilePoc(
     case 'html-form':
       code = generateHtmlFormPoc(request, options);
       description = 'Standard HTML form with automatic submission and hidden inputs';
+      break;
+
+    case 'html-navigation':
+      code = generateNavigationPoc(request, options);
+      description = 'Top-level window.location navigation payload (SameSite=Lax bypass)';
       break;
 
     case 'html-fetch':

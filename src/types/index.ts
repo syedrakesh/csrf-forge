@@ -46,7 +46,15 @@ export interface AnalysisResult {
 }
 
 /** CSRF PoC output format */
-export type PocFormat = 'html-form' | 'html-ajax' | 'html-fetch' | 'html-img' | 'python' | 'curl' | 'websocket';
+export type PocFormat =
+  | 'html-form'
+  | 'html-ajax'
+  | 'html-fetch'
+  | 'html-img'
+  | 'python'
+  | 'curl'
+  | 'websocket'
+  | 'html-navigation';
 
 /** Generated CSRF PoC */
 export interface GeneratedPoc {

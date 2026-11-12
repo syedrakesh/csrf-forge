@@ -92,4 +92,29 @@ describe('CSRF Analyzer (csrfAnalyzer.ts)', () => {
     expect(noAuthFinding).toBeDefined();
     expect(analysis.isVulnerable).toBe(false);
   });
+
+  it('detects method override parameter on GET requests as SameSite bypass risk', () => {
+    const overrideReq: ParsedRequest = {
+      id: 'test-override',
+      method: 'GET',
+      url: 'https://app.com/change-email?email=test%40evil.com&_method=POST',
+      headers: {
+        host: 'app.com',
+        cookie: 'session=xyz987',
+      },
+      cookies: {
+        session: 'xyz987',
+      },
+      body: '',
+      contentType: '',
+      timestamp: Date.now(),
+    };
+
+    const analysis = analyzeCsrfRequest(overrideReq);
+    const overrideFinding = analysis.findings.find((f) => f.id === 'METHOD_OVERRIDE_DETECTED');
+    expect(overrideFinding).toBeDefined();
+    expect(overrideFinding?.title).toContain('_method=POST');
+    expect(overrideFinding?.severity).toBe('critical');
+    expect(analysis.isVulnerable).toBe(true);
+  });
 });

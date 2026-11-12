@@ -105,4 +105,47 @@ describe('HTML Form Generator', () => {
     expect(poc).toContain('fetch("https://victim.com/api/seed", { mode: \'no-cors\' })');
     expect(poc).toContain("document.getElementById('csrf_form').submit();");
   });
+
+  it('automatically extracts query parameters into hidden inputs for GET requests and cleans action URL', () => {
+    const getReq: ParsedRequest = {
+      id: 'req-get-1',
+      method: 'GET',
+      url: 'https://0aa3.web-security-academy.net/my-account/change-email?email=wiener%40normal-user.net&_method=POST',
+      headers: { host: '0aa3.web-security-academy.net' },
+      cookies: { session: '94sgpXvw' },
+      body: '',
+      contentType: 'application/x-www-form-urlencoded',
+      timestamp: Date.now(),
+    };
+
+    const poc = generateHtmlFormPoc(getReq);
+
+    // Form action must be cleaned of query string to comply with browser GET submission spec
+    expect(poc).toContain('action="https://0aa3.web-security-academy.net/my-account/change-email"');
+    expect(poc).not.toContain('action="https://0aa3.web-security-academy.net/my-account/change-email?');
+    expect(poc).toContain('method="GET"');
+    // Parameters must be converted to hidden inputs
+    expect(poc).toContain('<input type="hidden" name="email" value="wiener@normal-user.net" />');
+    expect(poc).toContain('<input type="hidden" name="_method" value="POST" />');
+  });
+
+  it('supports custom parameter overrides for GET requests', () => {
+    const getReq: ParsedRequest = {
+      id: 'req-get-2',
+      method: 'GET',
+      url: 'https://bank.com/transfer?amount=50&to=alice',
+      headers: { host: 'bank.com' },
+      cookies: { session: 's1' },
+      body: '',
+      contentType: 'application/x-www-form-urlencoded',
+      timestamp: Date.now(),
+    };
+
+    const poc = generateHtmlFormPoc(getReq, {
+      customParameters: { amount: '9999', to: 'attacker' },
+    });
+
+    expect(poc).toContain('<input type="hidden" name="amount" value="9999" />');
+    expect(poc).toContain('<input type="hidden" name="to" value="attacker" />');
+  });
 });
